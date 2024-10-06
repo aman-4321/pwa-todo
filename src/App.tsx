@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,67 +6,64 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Edit2 } from "lucide-react";
 import { useToast } from "./hooks/use-toast";
+import OfflineMessage from "@/components/OfflineMessage"; // Import the OfflineMessage component
 
-// Define the structure of a Task using TypeScript interface
 interface Task {
   id: number;
   title: string;
   description: string;
   completed: boolean;
-  synced: boolean;
 }
 
 export default function TodoList() {
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>(() => {
-    // Initialize tasks from localStorage if available
-    const savedTasks = localStorage.getItem("tasks");
-    return savedTasks ? JSON.parse(savedTasks) : [];
+    if (typeof window !== "undefined") {
+      const savedTasks = localStorage.getItem("tasks");
+      return savedTasks ? JSON.parse(savedTasks) : [];
+    }
+    return [];
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const { toast } = useToast();
+  const [isOffline, setIsOffline] = useState(!navigator.onLine); // Track online/offline status
+
+  const showToast = useCallback(
+    (
+      title: string,
+      description: string,
+      variant: "default" | "destructive" = "default",
+    ) => {
+      toast({ title, description, variant });
+    },
+    [toast],
+  );
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+  }, [tasks]);
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+  // Update online/offline status
+  const updateOnlineStatus = () => {
+    setIsOffline(!navigator.onLine);
+  };
 
+  useEffect(() => {
+    // Add event listeners
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+
+    // Clean up the event listeners on component unmount
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", updateOnlineStatus);
+      window.removeEventListener("offline", updateOnlineStatus);
     };
   }, []);
 
-  // Save tasks to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-    if (isOnline) {
-      syncTasksWithLocalStorage();
-    }
-  }, [tasks, isOnline]);
-
-  const syncTasksWithLocalStorage = () => {
-    try {
-      localStorage.setItem("tasks", JSON.stringify(tasks));
-      toast({
-        title: "Tasks Saved",
-        description: "Your tasks have been saved to local storage.",
-      });
-    } catch (error) {
-      console.error("Failed to save tasks:", error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save tasks. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleAddTask = async () => {
+  const handleAddTask = () => {
     if (title.trim() === "") return;
 
     if (editingTask) {
@@ -76,23 +73,16 @@ export default function TodoList() {
         ),
       );
       setEditingTask(null);
-      toast({
-        title: "Task Updated",
-        description: `The task "${title}" has been updated.`,
-      });
+      showToast("Task Updated", `The task "${title}" has been updated.`);
     } else {
       const newTask: Task = {
         id: Date.now(),
         title,
         description,
         completed: false,
-        synced: false,
       };
       setTasks([...tasks, newTask]);
-      toast({
-        title: "Task Added",
-        description: `A new task "${title}" has been added.`,
-      });
+      showToast("Task Added", `A new task "${title}" has been added.`);
     }
 
     setTitle("");
@@ -109,10 +99,10 @@ export default function TodoList() {
     const taskToDelete = tasks.find((task) => task.id === id);
     setTasks(tasks.filter((task) => task.id !== id));
     if (taskToDelete) {
-      toast({
-        title: "Task Deleted",
-        description: `The task "${taskToDelete.title}" has been deleted.`,
-      });
+      showToast(
+        "Task Deleted",
+        `The task "${taskToDelete.title}" has been deleted.`,
+      );
     }
   };
 
@@ -202,6 +192,8 @@ export default function TodoList() {
             </div>
           </CardContent>
         </Card>
+        {/* Render the offline message if the user is offline */}
+        {isOffline && <OfflineMessage />}
       </div>
       <Toaster />
     </>
