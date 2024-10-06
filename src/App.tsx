@@ -8,6 +8,7 @@ import { Trash2, Edit2 } from "lucide-react";
 import { useToast } from "./hooks/use-toast";
 import OfflineMessage from "@/components/OfflineMessage"; // Import the OfflineMessage component
 
+// Task interface to type the tasks in the todo list
 interface Task {
   id: number;
   title: string;
@@ -16,8 +17,11 @@ interface Task {
 }
 
 export default function TodoList() {
+  // State for task title and description inputs
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+
+  // State for storing tasks with initial value from local storage
   const [tasks, setTasks] = useState<Task[]>(() => {
     if (typeof window !== "undefined") {
       const savedTasks = localStorage.getItem("tasks");
@@ -25,10 +29,13 @@ export default function TodoList() {
     }
     return [];
   });
+
+  // State for editing a task
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const { toast } = useToast();
+  const { toast } = useToast(); // Hook for displaying toast messages
   const [isOffline, setIsOffline] = useState(!navigator.onLine); // Track online/offline status
 
+  // Function to show toast notifications
   const showToast = useCallback(
     (
       title: string,
@@ -40,64 +47,71 @@ export default function TodoList() {
     [toast],
   );
 
+  // Effect to save tasks to local storage whenever tasks state changes
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("tasks", JSON.stringify(tasks));
     }
   }, [tasks]);
 
-  // Update online/offline status
+  // Function to update the online/offline status
   const updateOnlineStatus = () => {
     setIsOffline(!navigator.onLine);
   };
 
+  // Effect to set up event listeners for online/offline status
   useEffect(() => {
-    // Add event listeners
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
 
-    // Clean up the event listeners on component unmount
+    // Clean up event listeners on component unmount
     return () => {
       window.removeEventListener("online", updateOnlineStatus);
       window.removeEventListener("offline", updateOnlineStatus);
     };
   }, []);
 
+  // Function to add a new task or update an existing one
   const handleAddTask = () => {
-    if (title.trim() === "") return;
+    if (title.trim() === "") return; // Prevent adding empty tasks
 
     if (editingTask) {
+      // Update existing task
       setTasks(
         tasks.map((task) =>
           task.id === editingTask.id ? { ...task, title, description } : task,
         ),
       );
-      setEditingTask(null);
+      setEditingTask(null); // Clear editing state
       showToast("Task Updated", `The task "${title}" has been updated.`);
     } else {
+      // Create a new task
       const newTask: Task = {
-        id: Date.now(),
+        id: Date.now(), // Unique ID based on timestamp
         title,
         description,
-        completed: false,
+        completed: false, // New tasks are initially not completed
       };
-      setTasks([...tasks, newTask]);
+      setTasks([...tasks, newTask]); // Add new task to the list
       showToast("Task Added", `A new task "${title}" has been added.`);
     }
 
+    // Reset input fields
     setTitle("");
     setDescription("");
   };
 
+  // Function to set task for editing
   const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setTitle(task.title);
-    setDescription(task.description);
+    setEditingTask(task); // Set the current task to be edited
+    setTitle(task.title); // Populate title input with task title
+    setDescription(task.description); // Populate description input with task description
   };
 
+  // Function to delete a task
   const handleDeleteTask = (id: number) => {
-    const taskToDelete = tasks.find((task) => task.id === id);
-    setTasks(tasks.filter((task) => task.id !== id));
+    const taskToDelete = tasks.find((task) => task.id === id); // Find the task to be deleted
+    setTasks(tasks.filter((task) => task.id !== id)); // Remove the task from the list
     if (taskToDelete) {
       showToast(
         "Task Deleted",
@@ -106,6 +120,7 @@ export default function TodoList() {
     }
   };
 
+  // Function to toggle the completion status of a task
   const handleToggleComplete = (id: number) => {
     setTasks(
       tasks.map((task) =>
@@ -125,6 +140,7 @@ export default function TodoList() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Input fields for title and description */}
               <Input
                 placeholder="Enter Task Title"
                 value={title}
@@ -140,6 +156,7 @@ export default function TodoList() {
               </Button>
             </div>
             <div className="mt-6 space-y-4">
+              {/* Display tasks or a message if no tasks are available */}
               {tasks.length === 0 ? (
                 <p className="text-center text-gray-500">No todos available</p>
               ) : (
@@ -168,6 +185,7 @@ export default function TodoList() {
                         </div>
                       </div>
                       <div className="flex space-x-2">
+                        {/* Edit and Delete buttons */}
                         <Button
                           size="icon"
                           variant="outline"
@@ -195,7 +213,7 @@ export default function TodoList() {
         {/* Render the offline message if the user is offline */}
         {isOffline && <OfflineMessage />}
       </div>
-      <Toaster />
+      <Toaster /> {/* Toast notifications for user feedback */}
     </>
   );
 }
