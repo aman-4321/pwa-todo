@@ -1,4 +1,3 @@
-// src/components/OfflineMessage.tsx
 import React from "react";
 
 const OfflineMessage: React.FC = () => {

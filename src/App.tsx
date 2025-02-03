@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Edit2 } from "lucide-react";
+import { Trash2, Edit2, Plus } from "lucide-react";
 import { useToast } from "./hooks/use-toast";
-import OfflineMessage from "@/components/OfflineMessage"; // Import the OfflineMessage component
+import OfflineMessage from "@/components/OfflineMessage";
+import { Separator } from "@/components/ui/separator";
 
-// Task interface to type the tasks in the todo list
 interface Task {
   id: number;
   title: string;
@@ -17,11 +17,9 @@ interface Task {
 }
 
 export default function TodoList() {
-  // State for task title and description inputs
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
 
-  // State for storing tasks with initial value from local storage
   const [tasks, setTasks] = useState<Task[]>(() => {
     if (typeof window !== "undefined") {
       const savedTasks = localStorage.getItem("tasks");
@@ -30,174 +28,187 @@ export default function TodoList() {
     return [];
   });
 
-  // State for editing a task
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const { toast } = useToast(); // Hook for displaying toast messages
-  const [isOffline, setIsOffline] = useState(!navigator.onLine); // Track online/offline status
+  const { toast } = useToast();
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Function to show toast notifications
   const showToast = useCallback(
     (
       title: string,
       description: string,
-      variant: "default" | "destructive" = "default",
+      variant: "default" | "destructive" = "default"
     ) => {
       toast({ title, description, variant });
     },
-    [toast],
+    [toast]
   );
 
-  // Effect to save tasks to local storage whenever tasks state changes
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("tasks", JSON.stringify(tasks));
     }
   }, [tasks]);
 
-  // Function to update the online/offline status
   const updateOnlineStatus = () => {
     setIsOffline(!navigator.onLine);
   };
 
-  // Effect to set up event listeners for online/offline status
   useEffect(() => {
     window.addEventListener("online", updateOnlineStatus);
     window.addEventListener("offline", updateOnlineStatus);
 
-    // Clean up event listeners on component unmount
     return () => {
       window.removeEventListener("online", updateOnlineStatus);
       window.removeEventListener("offline", updateOnlineStatus);
     };
   }, []);
 
-  // Function to add a new task or update an existing one
   const handleAddTask = () => {
-    if (title.trim() === "") return; // Prevent adding empty tasks
+    if (title.trim() === "") return;
 
     if (editingTask) {
-      // Update existing task
       setTasks(
         tasks.map((task) =>
-          task.id === editingTask.id ? { ...task, title, description } : task,
-        ),
+          task.id === editingTask.id ? { ...task, title, description } : task
+        )
       );
-      setEditingTask(null); // Clear editing state
+      setEditingTask(null);
       showToast("Task Updated", `The task "${title}" has been updated.`);
     } else {
-      // Create a new task
       const newTask: Task = {
-        id: Date.now(), // Unique ID based on timestamp
+        id: Date.now(),
         title,
         description,
-        completed: false, // New tasks are initially not completed
+        completed: false,
       };
-      setTasks([...tasks, newTask]); // Add new task to the list
+      setTasks([...tasks, newTask]);
       showToast("Task Added", `A new task "${title}" has been added.`);
     }
 
-    // Reset input fields
     setTitle("");
     setDescription("");
   };
 
-  // Function to set task for editing
   const handleEditTask = (task: Task) => {
-    setEditingTask(task); // Set the current task to be edited
-    setTitle(task.title); // Populate title input with task title
-    setDescription(task.description); // Populate description input with task description
+    setEditingTask(task);
+    setTitle(task.title);
+    setDescription(task.description);
   };
 
-  // Function to delete a task
   const handleDeleteTask = (id: number) => {
-    const taskToDelete = tasks.find((task) => task.id === id); // Find the task to be deleted
-    setTasks(tasks.filter((task) => task.id !== id)); // Remove the task from the list
+    const taskToDelete = tasks.find((task) => task.id === id);
+    setTasks(tasks.filter((task) => task.id !== id));
     if (taskToDelete) {
       showToast(
         "Task Deleted",
-        `The task "${taskToDelete.title}" has been deleted.`,
+        `The task "${taskToDelete.title}" has been deleted.`
       );
     }
   };
 
-  // Function to toggle the completion status of a task
   const handleToggleComplete = (id: number) => {
     setTasks(
       tasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task,
-      ),
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
     );
   };
 
   return (
-    <>
-      <div className="container mx-auto p-4 max-w-2xl">
-        <Card>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
+        <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">
-              Todo List
+            <CardTitle className="text-3xl font-bold text-center text-gray-800">
+              Tasks
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Input fields for title and description */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAddTask();
+              }}
+              className="space-y-4 mb-8"
+            >
               <Input
-                placeholder="Enter Task Title"
+                placeholder="Task title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                className="text-lg"
               />
               <Input
-                placeholder="Enter Task Description"
+                placeholder="Task description (optional)"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
-              <Button className="w-full" onClick={handleAddTask}>
+              <Button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 {editingTask ? "Update Task" : "Add Task"}
               </Button>
-            </div>
-            <div className="mt-6 space-y-4">
-              {/* Display tasks or a message if no tasks are available */}
+            </form>
+            <Separator className="my-6" />
+            <div className="space-y-4">
               {tasks.length === 0 ? (
-                <p className="text-center text-gray-500">No todos available</p>
+                <p className="text-center text-gray-500 py-4">
+                  No tasks yet. Add one above!
+                </p>
               ) : (
                 tasks.map((task) => (
                   <Card
                     key={task.id}
-                    className={task.completed ? "bg-gray-100" : ""}
+                    className={`transition-all duration-300 ease-in-out ${
+                      task.completed ? "opacity-50" : ""
+                    }`}
                   >
                     <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-3 flex-1">
                         <Checkbox
                           checked={task.completed}
                           onCheckedChange={() => handleToggleComplete(task.id)}
+                          className="border-2"
                         />
                         <div>
                           <h3
-                            className={`font-semibold ${task.completed ? "line-through text-gray-500" : ""}`}
+                            className={`font-medium ${
+                              task.completed
+                                ? "line-through text-gray-500"
+                                : "text-gray-800"
+                            }`}
                           >
                             {task.title}
                           </h3>
-                          <p
-                            className={`text-sm ${task.completed ? "line-through text-gray-500" : "text-gray-600"}`}
-                          >
-                            {task.description}
-                          </p>
+                          {task.description && (
+                            <p
+                              className={`text-sm mt-1 ${
+                                task.completed
+                                  ? "line-through text-gray-400"
+                                  : "text-gray-600"
+                              }`}
+                            >
+                              {task.description}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div className="flex space-x-2">
-                        {/* Edit and Delete buttons */}
+                      <div className="flex space-x-2 ml-4">
                         <Button
                           size="icon"
                           variant="outline"
                           onClick={() => handleEditTask(task)}
+                          className="text-gray-600 hover:text-blue-600 transition-colors"
                         >
                           <Edit2 className="h-4 w-4" />
                           <span className="sr-only">Edit task</span>
                         </Button>
                         <Button
                           size="icon"
-                          variant="destructive"
+                          variant="outline"
                           onClick={() => handleDeleteTask(task.id)}
+                          className="text-gray-600 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Delete task</span>
@@ -210,10 +221,9 @@ export default function TodoList() {
             </div>
           </CardContent>
         </Card>
-        {/* Render the offline message if the user is offline */}
         {isOffline && <OfflineMessage />}
       </div>
-      <Toaster /> {/* Toast notifications for user feedback */}
-    </>
+      <Toaster />
+    </div>
   );
 }
